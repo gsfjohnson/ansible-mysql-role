@@ -1,0 +1,9 @@
+---
+
+- name: install pkg
+  yum: name={{item}} state=installed
+  with_items:
+    - mysql-server
+
+- name: service enable, start
+  service: name=mysqld state={{mysql_state}} enabled={{mysql_enabled}}
