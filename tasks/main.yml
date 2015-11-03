@@ -3,3 +3,6 @@
 - include: setup-RedHat.yml
   when: ansible_os_family == 'RedHat'
 
+- include: config.yml
+  when: mysql_root_pass is defined
+
