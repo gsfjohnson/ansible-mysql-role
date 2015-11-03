@@ -1,12 +1,5 @@
 ---
 
-- name: install pkg
-  yum:
-    name={{mysql_pkg_name}}
-    state={{mysql_pkg_state}}
+- include: setup-RedHat.yml
+  when: ansible_os_family == 'RedHat'
 
-- name: service start, enable
-  service:
-    name={{mysql_svc_name}}
-    state={{mysql_svc_state}}
-    enabled={{mysql_svc_enabled}}
