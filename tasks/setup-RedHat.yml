@@ -1,13 +1,28 @@
 ---
 
-- name: install pkg
+- name: install pkg el6
   yum:
-    name={{mysql_pkg_name}}
+    name={{mysql_pkg_name_6}}
     state={{mysql_pkg_state}}
+  when: ansible_distribution_major_version == "6"
 
-- name: service start, enable
+- name: install pkg el7
+  yum:
+    name={{mysql_pkg_name_7}}
+    state={{mysql_pkg_state}}
+  when: ansible_distribution_major_version == "7"
+
+- name: service start, enable el6
   service:
-    name={{mysql_svc_name}}
+    name={{mysql_svc_name_6}}
     state={{mysql_svc_state}}
     enabled={{mysql_svc_enabled}}
+  when: ansible_distribution_major_version == "6"
+
+- name: service start, enable el7
+  service:
+    name={{mysql_svc_name_7}}
+    state={{mysql_svc_state}}
+    enabled={{mysql_svc_enabled}}
+  when: ansible_distribution_major_version == "7"
 
