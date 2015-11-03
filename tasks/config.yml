@@ -4,7 +4,7 @@
   mysql_user:
     name=root
     host={{ item }}
-    password={{ mysql_root_db_pass }}
+    password={{ mysql_root_pass }}
   with_items:
    - "{{ ansible_hostname }}"
    - 127.0.0.1
@@ -16,19 +16,19 @@
   mysql_user:
     name=root
     host={{ item }}
-    password={{ mysql_root_db_pass }}
+    password={{ mysql_root_pass }}
   with_items:
    - 127.0.0.1
    - ::1
    - localhost
   when: ansible_hostname == 'localhost' 
 
-- name: copy .my.cnf file with root password credentials
+- name: create .my.cnf
   template:
     src=.my.cnf.j2
     dest=~/.my.cnf mode=0600
 
-- name: ensure anonymous users are not in the database
+- name: purge anonymous users
   mysql_user:
     name=''
     host={{ item }}
@@ -37,44 +37,44 @@
    - localhost
    - "{{ ansible_hostname }}"
 
-- name: remove the test database
+- name: remove test db
   mysql_db:
     name=test
     state=absent
 
-- name: Create the database's
+- name: create db
   mysql_db:
     name={{ item.name }}
     state=present
   with_items: mysql_db
   when: mysql_db|lower() != 'none'
 
-- name: Create the database users
+- name: create users
   mysql_user:
     name={{ item.name }}
-    password={{ item.pass|default("foobar") }}  
+    password={{ item.pass|default("") }}  
     priv={{ item.priv|default("*.*:ALL") }}
-    state=present
     host={{ item.host | default("localhost") }}
+    state=present
   with_items: mysql_users
   when: mysql_users|lower() != 'none'
 
-- name: Create the replication users
+- name: create replication users
   mysql_user:
     name={{ item.name }}
-    host="%"
     password={{ item.pass|default("foobar") }}  
     priv=*.*:"REPLICATION SLAVE"
+    host="%"
     state=present
   with_items: mysql_repl_user
-  when: mysql_repl_role == 'master'
+  when: mysql_repl_role == 'master' and 0
 
-- name: Check if slave is already configured for replication
+- name: slave replication check
   mysql_replication:
     mode=getslave
   ignore_errors: true
   register: slave
-  when: mysql_repl_role == 'slave'
+  when: mysql_repl_role == 'slave' and 0
 
 - name: Ensure the hostname entry for master is available for the client.
   lineinfile:
@@ -82,14 +82,14 @@
     regexp="{{ mysql_repl_master }}"
     line="{{ hostvars[mysql_repl_master].ansible_default_ipv4.address + "   " + mysql_repl_master }}"
     state=present
-  when: slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined
+  when: slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined and 0
 
 - name: Get the current master servers replication status
   mysql_replication:
     mode=getmaster
   delegate_to: "{{ mysql_repl_master }}"
   register: repl_stat
-  when: slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined
+  when: slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined and 0
 
 - name: Change the master in slave to start the replication
   mysql_replication:
@@ -99,6 +99,6 @@
     master_log_pos={{ repl_stat.Position }}
     master_user={{ mysql_repl_user[0].name }}
     master_password={{ mysql_repl_user[0].pass }}
-  when: slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined
+  when: slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined and 0
 
 
