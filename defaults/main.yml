@@ -1,4 +1,9 @@
 ---
 
-mysql_state: started
-mysql_enabled: yes
+mysql_pkg_name: mysql-server
+mysql_pkg_state: installed
+
+mysql_svc_name: mysqld
+mysql_svc_state: started
+mysql_svc_enabled: yes
+
