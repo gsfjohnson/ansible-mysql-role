@@ -19,6 +19,10 @@ mysql_db: []
 #  - name: bar
 #    replicate: no
 
+mysql_db_import: []
+#  - name: foo
+#    target: /etc/raddb/sql/mysql/nas.sql
+
 mysql_users: []
 #  - name: benz
 #    pass: foobar
