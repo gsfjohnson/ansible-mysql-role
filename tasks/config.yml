@@ -47,7 +47,13 @@
     name={{ item.name }}
     state=present
   with_items: mysql_db
-  when: mysql_db|lower() != 'none'
+
+- name: import schema
+  mysql_db:
+    name={{ item.name }}
+    state=import
+    target={{ item.target }}
+  with_items: mysql_db_import
 
 - name: create users
   mysql_user:
@@ -57,7 +63,6 @@
     host={{ item.host | default("localhost") }}
     state=present
   with_items: mysql_users
-  when: mysql_users|lower() != 'none'
 
 - name: create replication users
   mysql_user:
