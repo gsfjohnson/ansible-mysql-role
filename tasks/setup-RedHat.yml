@@ -22,6 +22,7 @@
     name={{mysql_svc_name_6}}
     state={{mysql_svc_state}}
     enabled={{mysql_svc_enabled}}
+    runlevel={{mysql_svc_runlevel}}
   when: ansible_distribution_major_version == "6"
 
 - name: service start, enable el7
@@ -29,5 +30,6 @@
     name={{mysql_svc_name_7}}
     state={{mysql_svc_state}}
     enabled={{mysql_svc_enabled}}
+    runlevel={{mysql_svc_runlevel}}
   when: ansible_distribution_major_version == "7"
 
