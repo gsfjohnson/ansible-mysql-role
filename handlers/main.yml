@@ -1,0 +1,8 @@
+---
+
+- name: svc restart mysqld
+  service:
+    name: "{{mysql_svc_name_6}}"
+    state: "restarted"
+  when: mysql_svc_state == "started"
+

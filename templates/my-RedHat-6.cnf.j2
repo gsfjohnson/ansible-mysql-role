@@ -9,7 +9,7 @@ port={{ mysql_port }}
 bind-address={{ mysql_bind_address }}
 server-id={{ mysql_server_id }}
 
-{% if mysql_repl_role == 'master' %}
+{% if mysql_replication and mysql_replication_master == ansible_hostname %}
 log_bin=mysql-bin
 expire_logs_days=10
 max_binlog_size=100M
@@ -26,10 +26,18 @@ binlog_ignore_db={{ i.name }}
 {% endif %}
 {% endfor #}
 {% endif %}
+{% if mysql_ssl %}
+ssl
+{% for key, val in mysql_ssl.iteritems() %}
+{{key}}={{val}}
+{% endfor %}
+{% endif %}
 
 [mysqld_safe]
 log-error=/var/log/mysqld.log
 pid-file=/var/run/mysqld/mysqld.pid
 
-!includedir /etc/mysql/conf.d/
+{% if mysql_include_dir %}
+!includedir {{mysql_include_dir}}
+{% endif %}
 

@@ -1,6 +1,6 @@
 ---
 
-- name: update mysql root password for all root accounts
+- name: update mysql root password
   mysql_user:
     name=root
     host={{ item }}
@@ -12,7 +12,7 @@
    - localhost
   when: ansible_hostname != 'localhost' 
 
-- name: update mysql root password for all root accounts
+- name: update mysql root password
   mysql_user:
     name=root
     host={{ item }}
@@ -25,6 +25,12 @@
 
 - name: create ~/.my.cnf
   template: src=.my.cnf.j2 dest=~/.my.cnf mode=0600
+
+- name: /etc/my.cnf
+  template:
+    src: "my-RedHat-6.cnf.j2"
+    dest: "/etc/my.cnf"
+    mode: "u=rw,g=r,o=r"
 
 - name: purge anonymous users
   mysql_user:
@@ -62,45 +68,71 @@
     state=present
   with_items: "{{mysql_users}}"
 
-#- name: create replication users
-#  mysql_user:
-#    name={{ item.name }}
-#    password={{ item.pass|default("foobar") }}  
-#    priv=*.*:"REPLICATION SLAVE"
-#    host="%"
-#    state=present
-#  with_items: "{{mysql_repl_user}}"
-#  when: mylsq_repl_role is defined and mysql_repl_role == 'master' and 0
+- name: create replication users
+  mysql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.pass|default('foobar') }}"
+    priv: "*.*:REPLICATION SLAVE"
+    host: "%"
+    state: present
+  with_items: "{{mysql_replication_user}}"
+  when: mysql_replication and mysql_replication_master != ansible_hostname
 
-#- name: slave replication check
-#  mysql_replication:
-#    mode=getslave
-#  ignore_errors: true
-#  register: slave
-#  when: mylsq_repl_role is defined and mysql_repl_role == 'slave' and 0
+- name: slave replication check
+  mysql_replication:
+    mode: getslave
+  ignore_errors: true
+  register: slave
+  when: mysql_replication and mysql_replication_master != ansible_hostname
 
-#- name: Ensure the hostname entry for master is available for the client.
+#- name: master entry in /etc/hosts
 #  lineinfile:
-#    dest=/etc/hosts
-#    regexp="{{ mysql_repl_master }}"
-#    line="{{ hostvars[mysql_repl_master].ansible_default_ipv4.address + "   " + mysql_repl_master }}"
-#    state=present
-#  when: mylsq_repl_role is defined and slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined and 0
+#    dest: "/etc/hosts"
+#    regexp: "{{ mysql_replication_master }}"
+#    line: "{{ hostvars[mysql_replication_master].ansible_default_ipv4.address + '   ' + mysql_replication_master }}"
+#  when: mysql_replication defined and slave|failed and mysql_replication_master != ansible_hostname
 
-#- name: Get the current master servers replication status
-#  mysql_replication:
-#    mode=getmaster
-#  delegate_to: "{{ mysql_repl_master }}"
-#  register: repl_stat
-#  when: mylsq_repl_role is defined and slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined and 0
+- debug: var=slave
 
-#- name: Change the master in slave to start the replication
-#  mysql_replication:
-#    mode=changemaster
-#    master_host={{ mysql_repl_master }}
-#    master_log_file={{ repl_stat.File }}
-#    master_log_pos={{ repl_stat.Position }}
-#    master_user={{ mysql_repl_user[0].name }}
-#    master_password={{ mysql_repl_user[0].pass }}
-#  when: mylsq_repl_role is defined and slave|failed and mysql_repl_role == 'slave' and mysql_repl_master is defined and 0
+- name: get master replication status
+  mysql_replication:
+    mode: getmaster
+  delegate_to: "{{ mysql_replication_master }}"
+  register: rep_stat
+  when: slave|failed
+
+- debug: var=rep_stat
+  when: rep_stat is defined 
+
+- name: update slave replication
+  mysql_replication:
+    mode: changemaster
+    master_host: "{{ mysql_replication_master }}"
+    master_log_file: "{{ repl_stat.File }}"
+    master_log_pos: "{{ repl_stat.Position }}"
+    master_user: "{{ mysql_repl_user[0].name }}"
+    master_password: "{{ mysql_repl_user[0].pass }}"
+  when: mysql_replication and slave|failed and mysql_replication_master != ansible_hostname
+
+- name: install certificate content
+  copy:
+    content: "{{item.content}}"
+    dest: "/etc/pki/tls/{{item.type}}/{{item.filename}}"
+    owner: "{{mysql_owner}}"
+    group: "{{mysql_group}}"
+    mode: "{{item.mode|default('0640')}}"
+  with_items: "{{mysql_certs}}"
+  when: item.content is defined and item.cn is defined and (item.cn == '*' or item.cn == ansible_hostname)
+  notify: svc restart mysqld
+
+- name: install certificate file
+  copy:
+    src: "{{item.file}}"
+    dest: "/etc/pki/tls/{{item.type}}/{{item.filename}}"
+    owner: "{{mysql_owner}}"
+    group: "{{mysql_group}}"
+    mode: "{{item.mode|default('0640')}}"
+  with_items: "{{mysql_certs}}"
+  when: item.file is defined and item.cn is defined and (item.cn == '*' or item.cn == ansible_hostname)
+  notify: svc restart mysqld
 
